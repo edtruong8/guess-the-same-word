@@ -5,15 +5,14 @@ with the same word. 5 tries (will be able to select how many) to get the same wo
 
 from random import choice
 
-# TODO: let users submit their own categories in addition to this
-categories = ['Movies', 'Ice Cream Flavors', 'Animals', 'Celebrities']
+# categories = ['Movies', 'Ice Cream Flavors', 'Animals', 'Celebrities']
 
 class Game:
 
     # Functions will be returning dictionaries, will make it easier to see state
     # status - 'error', 'continue', 'success', 'L'
 
-    def __init__(self, tries=5, numPlayers=2):
+    def __init__(self, categories, tries=5, numPlayers=2):
         self.category = choice(categories)
         self.guesses = []
         self.usedWords = set()
