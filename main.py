@@ -2,22 +2,48 @@ from game import Game
 
 DEFAULT_CATEGORIES = ['Movies', 'Ice Cream Flavors', 'Animals', 'Celebrities']
 
-def main():
-    categories = DEFAULT_CATEGORIES.copy()
-    # player inputting categories
-    # while True:
+# returns yes no or add in string form
+def get_category_setting():
     print("Do you want to use predefined categories only (Yes), custom categories only (No), " \
     "or both and add onto the predefined cateogries (Add)")
-    temp = input("Input (Yes/No/Add)")
-    while temp not in ["Yes", "No", "Add"]:
-        temp = input("Please input either: Yes / No / Add")
-    if temp == "No":
-        # don't use categories.clear, because if we run another game, we lost the global
-        categories = []
+    setting = ""
+    while setting not in ["Yes", "No", "Add"]:
+        print("Please input either: Yes / No / Add")
+        setting = input("Input (Yes/No/Add)")
+    return setting
 
-    if temp != "Yes":
+
+def get_custom_category():
+    return input("Input a custom category you would like. When done, enter FINISHED")
+
+def get_num_tries():
+    while True:
+        tries = input("Input how many tries you want.") 
+        if tries.isdigit():
+            return int(tries)
+        print("Please input a valid integer")
+
+def get_num_players():
+    while True:
+        numPlayers = input("Input number of players.")
+        if numPlayers.isdigit():
+            return int(numPlayers)
+        print("Please input a valid integer")
+
+def get_guess(player_id):
+    return input(f"Player {player_id + 1} please input your guess.")
+
+def main():
+
+    categories = DEFAULT_CATEGORIES.copy()
+    setting = get_category_setting()
+
+    if setting == "No":
+        categories.clear()
+
+    else:
         while True:
-            category = input("Input a custom category you would like. When done, enter FINISHED")
+            category = get_custom_category()
             if category == "FINISHED":
                 if len(categories) == 0:
                     print("Input at least one category.")
@@ -29,19 +55,8 @@ def main():
             categories.append(category)
             print(f"Current categories: {categories}")
 
-    while True:
-        try:
-            tries = input("Input how many tries you want.")
-            break
-        except ValueError:
-            print("Please input a valid integer")
-    
-    while True:
-        try:
-            numPlayers = input("Input number of players")
-            break
-        except ValueError:
-            print("Please input a valid integer")
+    tries = get_num_tries()
+    numPlayers = get_num_players()
 
     game = Game(categories=categories, tries=tries, numPlayers=numPlayers)
     print("Category :", game.category)
@@ -49,13 +64,15 @@ def main():
     # game runs here
     while True:
         for i in range(game.numPlayers):
-            guess = input(f"Player {i + 1} please input your guess: ")
+            guess = get_guess(i)
             res = game.submit_guess(guess)
             if res["status"] == "error":
+                # either no guess or guess has been used already
                 print(res["message"])
                 while res["status"] == "error":
-                    guess = input(f"Player {i + 1} please input your guess: ")
+                    guess = get_guess(i)
                     res = game.submit_guess(guess)
+            # okay confirmation
             print(res["message"])
         
         # all guesses are stored
