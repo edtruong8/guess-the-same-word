@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Same Word — WebSocket Demo</title>
+  <style>
+    body { font-family: system-ui, -apple-system, sans-serif; margin: 1rem; }
+    #messages { border: 1px solid #ccc; height: 200px; overflow: auto; padding: 0.5rem; }
+    #players { margin-top: 0.5rem; }
+  </style>
+</head>
+<body>
+  <h1>Same Word — WebSocket Demo</h1>
+  <div>
+    <label>Room: <input id="room" value="room1" /></label>
+    <label>Name: <input id="name" value="Player" /></label>
+    <label>Players (num): <input id="numPlayers" type="number" value="2" min="2" /></label>
+    <label>Tries: <input id="tries" type="number" value="5" min="1" /></label>
+    <button id="connectBtn">Connect</button>
+  </div>
+
+  <div id="status" style="margin-top:0.5rem;"></div>
+
+  <div id="game" style="display:none; margin-top:1rem;">
+    <div><strong>Category:</strong> <span id="category"></span></div>
+    <div><strong>Round:</strong> <span id="round"></span> / <span id="tries"></span></div>
+    <div id="players"><strong>Players:</strong> <span id="playerList"></span></div>
+    <div id="guessed"><strong>Guessed:</strong> <span id="guessedList"></span></div>
+
+    <div style="margin-top:0.5rem;">
+      <input id="guessInput" placeholder="Enter your guess" />
+      <button id="sendGuessBtn">Send Guess</button>
+    </div>
+
+    <h3>Messages</h3>
+    <div id="messages"></div>
+  </div>
+
+  <script src="/static/client.js"></script>
+</body>
+</html>

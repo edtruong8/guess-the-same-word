@@ -1,1 +1,4 @@
 __pycache__
+.venv
+README.md
+client_py.py
