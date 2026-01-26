@@ -1,27 +1,42 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse
 from game import Game
 from main import DEFAULT_CATEGORIES
 
 app = FastAPI()
-app.mount("/", StaticFiles(directory="static", html=True), name="static")
+app.mount("/static", StaticFiles(directory="static"), name="static")
+
+@app.get("/")
+async def read_index():
+    return FileResponse("static/index.html")
+
+@app.get("/client.js")
+async def serve_client_js():
+    return FileResponse("static/client.js")
+
+# NOTE: async allows multiple connections to be handled concurrently, without waiting for each to finish or blocking server
+# NOTE: await - pause while waiting, allow other connections to run
 
 class ConnectionManager:
     def __init__(self):
-        # room -> list of WebSocket
+        # list of websockets, so we can broadcast messages to the correct room
         self.rooms = {}
-        # room -> { websocket: player_name }
+        # {websocket: player_name}, can update player list to show name, and can use name for broadcasts
         self.room_players = {}
-        # room -> Game
+        # stores game objects per room
         self.games = {}
 
     async def connect(self, websocket: WebSocket, room: str):
         await websocket.accept()
-        self.rooms.setdefault(room, []).append(websocket)
+        # add this websocket connection to the room dict
+        self.rooms.setdefault(room, []).append(websocket) # setdefault cause room isn't a key yet, can 2 line if u want
 
     def disconnect(self, websocket: WebSocket, room: str):
+        # remove websocket from room list
         if room in self.rooms and websocket in self.rooms[room]:
             self.rooms[room].remove(websocket)
+        # remove socket from player mapping (player isn't in room, and can update list)
         if room in self.room_players and websocket in self.room_players[room]:
             del self.room_players[room][websocket]
 
@@ -31,6 +46,7 @@ class ConnectionManager:
             self.room_players.pop(room, None)
             self.games.pop(room, None)
 
+    # websocket : player name
     def set_player(self, websocket: WebSocket, room: str, name: str):
         self.room_players.setdefault(room, {})[websocket] = name
 
@@ -38,29 +54,35 @@ class ConnectionManager:
         return list(self.room_players.get(room, {}).values())
 
     async def broadcast(self, room: str, message: dict):
-        conns = list(self.rooms.get(room, []))
-        for conn in conns:
+        connections = list(self.rooms.get(room, []))
+        for conn in connections:
             try:
+                # this is the ws.onmessage in JS, it outputs this
                 await conn.send_json(message)
             except Exception:
                 # ignore send failures; disconnect will cleanup later
                 pass
 
+# one global manager for all websockets
 manager = ConnectionManager()
 
-@app.websocket("/ws/{room}")
-async def websocket_endpoint(websocket: WebSocket, room: str):
+# when a client opens a websocket, run this func (single room: "default")
+@app.websocket("/ws")
+async def websocket_endpoint(websocket: WebSocket): # one connected client
+    room = "default"  # hardcoded single room
+    # client connects, but not yet joined a game
     await manager.connect(websocket, room)
     try:
+        # forever in loop to receive messages from this client
         while True:
             data = await websocket.receive_json()
             msg_type = data.get("type")
-            payload = data.get("payload", {})
+            payload = data.get("payload")
 
             if msg_type == "join":
-                name = payload.get("name", "Anon")
-                numPlayers = int(payload.get("numPlayers", 2))
-                tries = int(payload.get("tries", 5))
+                name = payload.get("name")
+                numPlayers = int(payload.get("numPlayers"))
+                tries = int(payload.get("tries"))
                 manager.set_player(websocket, room, name)
 
                 # initialize a Game for the room on first join
@@ -74,10 +96,11 @@ async def websocket_endpoint(websocket: WebSocket, room: str):
                 await manager.broadcast(room, {"type":"state", "payload": {"category":game.category, "round":game.round, "tries":game.tries}})
 
             elif msg_type == "guess":
-                word = payload.get("word", "")
+                word = payload.get("word")
                 game = manager.games.get(room)
+                # if u try guessing before joining
                 if not game:
-                    await websocket.send_json({"type":"error","payload":{"message":"No game in room. Join first."}})
+                    await websocket.send_json({"type":"error","payload":{"message":"Join a game first."}})
                     continue
 
                 res = game.submit_guess(word)
@@ -88,7 +111,7 @@ async def websocket_endpoint(websocket: WebSocket, room: str):
                 if len(game.guesses) == game.numPlayers:
                     check = game.check_answers()
                     await manager.broadcast(room, {"type":"check", "payload": check})
-
+                    
             elif msg_type == "state":
                 game = manager.games.get(room)
                 if game:

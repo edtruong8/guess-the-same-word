@@ -1,9 +1,10 @@
+// each player has a client.js instance, their own websocket connection
 let ws = null;
-let room = null;
-let name = null;
+let playerName = null;
 // track which players have already submitted a guess this round
 let guessedPlayers = new Set();
 
+// all these helper functions change DOM to show up on the UI
 function log(msg) {
   const el = document.getElementById('messages');
   const p = document.createElement('div');
@@ -30,37 +31,65 @@ function updateGuessedPlayers(list) {
   document.getElementById('guessedList').textContent = list.join(', ');
 }
 
+function updateRoundGuesses(guesses) {
+  const el = document.getElementById('roundGuesses');
+  el.innerHTML = '';
+  guesses.forEach(guess => {
+    const p = document.createElement('p');
+    p.textContent = guess;
+    el.appendChild(p);
+  });
+}
+
 function connect() {
-  room = document.getElementById('room').value || 'room1';
-  name = document.getElementById('name').value || 'Player';
-  const numPlayers = parseInt(document.getElementById('numPlayers').value || '2');
-  const tries = parseInt(document.getElementById('tries').value || '5');
+  playerName = document.getElementById('name').value || 'Player';
+  const numPlayers = 2;  // hardcoded
+  const tries = 5;  // hardcoded
 
-  const protocol = (location.protocol === 'https:') ? 'wss' : 'ws';
-  ws = new WebSocket(`${protocol}://${location.host}/ws/${room}`);
+  let protocol;
+  // location is provided by the browser
+  if (location.protocol === 'https:') {
+    protocol = 'wss';
+  } else {
+    protocol = 'ws';
+  }
 
-  ws.onopen = () => {
-    setStatus('Connected');
-    document.getElementById('game').style.display = 'block';
+  // creating the websocket (single room: "default")
+  ws = new WebSocket(`${protocol}://${location.host}/ws`);
+
+  // defining a function to the onopen property of the websocket object (it will run, onopen), therefore doesn't need a name
+  ws.onopen = function() {
+    setStatus('Connected'); // will show up on the HTML now
+
+    // hide playername up top and hide join form
+    document.getElementById('joinDiv').style.display = 'none';
+    document.getElementById('playerNameField').style.display = 'none'
+    document.getElementById('playerNameDisplay').textContent = playerName;
+    document.getElementById('playerNameDisplay').style.display = 'block';
+
+    document.getElementById('game').style.display = 'block'; // block is default showing display
     // ensure inputs are enabled for a fresh round
     document.getElementById('guessInput').disabled = false;
     document.getElementById('sendGuessBtn').disabled = false;
     guessedPlayers.clear();
     updateGuessedPlayers([]);
+    updateRoundGuesses([]); // clear guesses display
 
-    // send join message
-    ws.send(JSON.stringify({type: 'join', payload: {name, numPlayers, tries}}));
-    log('Joined room ' + room + ' as ' + name);
+    // send join message, same format as sending a guess
+    ws.send(JSON.stringify({type: 'join', payload: {name: playerName, numPlayers, tries}}));
+    log('Joined as ' + playerName);
   };
 
-  ws.onmessage = (ev) => {
-    let msg = JSON.parse(ev.data);
+  // this is when you receive a message from the server
+  ws.onmessage = function(event) {
+    let msg = JSON.parse(event.data);
+    // each message has different states, so we know what to do with the payload
     if (msg.type === 'state') {
       updateState(msg.payload);
       log('State updated');
     } else if (msg.type === 'players') {
       updatePlayers(msg.payload);
-      log('Players: ' + msg.payload.join(', '));
+      // log('Players: ' + msg.payload.join(', '));
     } else if (msg.type === 'guess_status') {
       // mark that the player (msg.player) has guessed this round
       guessedPlayers.add(msg.player);
@@ -69,7 +98,7 @@ function connect() {
       log(`Guess status (${msg.player}): ${msg.payload.message}`);
 
       // if this client submitted the guess, disable our input until next round/result
-      if (msg.player === name) {
+      if (msg.player === playerName) {
         document.getElementById('guessInput').disabled = true;
         document.getElementById('sendGuessBtn').disabled = true;
       }
@@ -77,6 +106,9 @@ function connect() {
     } else if (msg.type === 'check') {
       // A round evaluation has occurred
       log(`Round result: ${msg.payload.message}`);
+
+      // Show each player's guess in UI
+      updateRoundGuesses(msg.payload.guesses);
 
       // Reset guessed trackers and re-enable inputs for next round
       guessedPlayers.clear();
@@ -92,17 +124,18 @@ function connect() {
 
     } else if (msg.type === 'error') {
       log('Error: ' + msg.payload.message);
+    // emergency backup?
     } else {
       log('Message: ' + JSON.stringify(msg));
     }
   };
 
-  ws.onclose = () => {
+  ws.onclose = function() {
     setStatus('Disconnected');
     document.getElementById('game').style.display = 'none';
   };
 
-  ws.onerror = (e) => {
+  ws.onerror = function(event) {
     log('WebSocket error');
   };
 }
@@ -115,26 +148,39 @@ function sendGuess() {
     log('Not connected');
     return;
   }
-  if (input.disabled || sendBtn.disabled) return;
+  if (input.disabled || sendBtn.disabled) {
+    log('Input disabled');
+    return;
+  }
 
-  const word = input.value.trim();
+  const word = input.value.trim(); // trim removes whitespace
   if (!word) return;
+  // same format when sending guess and connect
   ws.send(JSON.stringify({type: 'guess', payload: {word}}));
+  // clear input
   input.value = '';
   // optimistically disable input for this player until server acknowledges
   input.disabled = true;
   sendBtn.disabled = true;
 }
 
-document.getElementById('connectBtn').addEventListener('click', () => {
-  connect();
-});
+// form submit for join
+document.getElementById('joinForm')
+  .addEventListener('submit', function (event) {
+    event.preventDefault();
+    connect();
+  });
 
-document.getElementById('sendGuessBtn').addEventListener('click', () => {
-  sendGuess();
-});
+// same for send guess btn
+document.getElementById('sendGuessBtn')
+  .addEventListener('click', function (event) {
+    sendGuess()
+  });
 
-// allow Enter to send guess
-document.getElementById('guessInput').addEventListener('keydown', (e) => {
-  if (e.key === 'Enter') sendGuess();
-});
+// allows enter to send guess
+document.getElementById('guessInput')
+  .addEventListener('keydown', function (event) {
+    if (event.key === 'Enter') {
+      sendGuess();
+    }
+  });

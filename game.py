@@ -39,17 +39,19 @@ class Game:
         
         if len(set(self.guesses)) == 1:
             return {"status" : "success", "message" : "Congrats! Everybody got the same word.",
-                    "round" : self.round, "tries" : self.tries}
+                    "round" : self.round, "tries" : self.tries, "guesses": self.guesses}
 
         if self.round >= self.tries:
-            return {"status" : "L", "message" : "Players were not able to guess the same word."}
+            return {"status" : "L", "message" : "Players were not able to guess the same word.", "guesses": self.guesses}
         
         self.round += 1
 
         for word in self.guesses:
             self.usedWords.add(word)
 
+        result = {"status" : "continue", "message" : "Not all guesses were the same. Onto the next round!",
+                "round" : self.round, "tries" : self.tries, "guesses": self.guesses}
+        
         self.guesses = []
 
-        return {"status" : "continue", "message" : "Not all guesses were the same. Onto the next round!",
-                "round" : self.round, "tries" : self.tries}
+        return result

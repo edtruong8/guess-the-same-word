@@ -1,0 +1,5 @@
+just some ideas i have in mind
+- restart / replay button after game is over
+- don’t allow duplicate names
+- don’t allow inputs after game ends
+- test for different networks / computers (have only tested two browsers on same computer)
