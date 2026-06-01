@@ -1,6 +1,4 @@
-from game import Game
-
-DEFAULT_CATEGORIES = ['Movies', 'Ice Cream Flavors', 'Animals', 'Celebrities']
+from game import Game, DEFAULT_CATEGORIES
 
 # returns yes no or add in string form
 def get_category_setting():

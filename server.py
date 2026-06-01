@@ -1,8 +1,7 @@
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
-from game import Game
-from main import DEFAULT_CATEGORIES
+from game import Game, DEFAULT_CATEGORIES
 
 app = FastAPI()
 app.mount("/static", StaticFiles(directory="static"), name="static")
@@ -67,9 +66,9 @@ class ConnectionManager:
 manager = ConnectionManager()
 
 # when a client opens a websocket, run this func (single room: "default")
-@app.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket): # one connected client
-    room = "default"  # hardcoded single room
+@app.websocket("/ws/{room_id}")
+async def websocket_endpoint(websocket: WebSocket, room_id: str):
+    room = room_id
     # client connects, but not yet joined a game
     await manager.connect(websocket, room)
     try:

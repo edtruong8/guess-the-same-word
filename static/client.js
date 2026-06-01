@@ -43,19 +43,18 @@ function updateRoundGuesses(guesses) {
 
 function connect() {
   playerName = document.getElementById('name').value || 'Player';
-  const numPlayers = 2;  // hardcoded
-  const tries = 5;  // hardcoded
+  const roomName = document.getElementById('room').value || 'default';
+  const numPlayers = parseInt(document.getElementById('numPlayers').value, 10) || 2;
+  const tries = parseInt(document.getElementById('tries').value, 10) || 5;
 
   let protocol;
-  // location is provided by the browser
   if (location.protocol === 'https:') {
     protocol = 'wss';
   } else {
     protocol = 'ws';
   }
 
-  // creating the websocket (single room: "default")
-  ws = new WebSocket(`${protocol}://${location.host}/ws`);
+  ws = new WebSocket(`${protocol}://${location.host}/ws/${roomName}`);
 
   // defining a function to the onopen property of the websocket object (it will run, onopen), therefore doesn't need a name
   ws.onopen = function() {
@@ -104,22 +103,30 @@ function connect() {
       }
 
     } else if (msg.type === 'check') {
-      // A round evaluation has occurred
+      // a round evaluation has occurred — server has called check_answers()
       log(`Round result: ${msg.payload.message}`);
 
-      // Show each player's guess in UI
+      // show each player's guess for this round
       updateRoundGuesses(msg.payload.guesses);
 
-      // Reset guessed trackers and re-enable inputs for next round
+      // reset who-has-guessed tracker regardless of outcome
       guessedPlayers.clear();
       updateGuessedPlayers([]);
-      document.getElementById('guessInput').disabled = false;
-      document.getElementById('sendGuessBtn').disabled = false;
 
-      // Update round/tries if the server sent them
-      if (typeof msg.payload.round !== 'undefined') {
-        document.getElementById('round').textContent = msg.payload.round;
-        document.getElementById('tries').textContent = msg.payload.tries;
+      if (msg.payload.status === 'success' || msg.payload.status === 'L') {
+        // game is over — lock inputs so no more guesses can be submitted
+        document.getElementById('guessInput').disabled = true;
+        document.getElementById('sendGuessBtn').disabled = true;
+        setStatus('Game over — ' + msg.payload.message);
+      } else {
+        // still going — re-enable inputs for next round
+        document.getElementById('guessInput').disabled = false;
+        document.getElementById('sendGuessBtn').disabled = false;
+        // update round/tries counter if server sent them
+        if (typeof msg.payload.round !== 'undefined') {
+          document.getElementById('round').textContent = msg.payload.round;
+          document.getElementById('tries').textContent = msg.payload.tries;
+        }
       }
 
     } else if (msg.type === 'error') {
@@ -135,7 +142,7 @@ function connect() {
     document.getElementById('game').style.display = 'none';
   };
 
-  ws.onerror = function(event) {
+  ws.onerror = function() {
     log('WebSocket error');
   };
 }
@@ -173,7 +180,7 @@ document.getElementById('joinForm')
 
 // same for send guess btn
 document.getElementById('sendGuessBtn')
-  .addEventListener('click', function (event) {
+  .addEventListener('click', function () {
     sendGuess()
   });
 

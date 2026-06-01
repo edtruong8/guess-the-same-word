@@ -1,11 +1,11 @@
 """
-Two-player game (will extend to multiplayer) where a category is selected and players have to come up 
+Two-player game (will extend to multiplayer) where a category is selected and players have to come up
 with the same word. 5 tries (will be able to select how many) to get the same word.
 """
 
 from random import choice
 
-# categories = ['Movies', 'Ice Cream Flavors', 'Animals', 'Celebrities']
+DEFAULT_CATEGORIES = ['Movies', 'Ice Cream Flavors', 'Animals', 'Celebrities']
 
 class Game:
 

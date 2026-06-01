@@ -15,9 +15,22 @@
    <div id="joinDiv">
     <h2>Join Game</h2>
     <form id="joinForm">
-      <label id="playerNameField">
+      <label>
         Player Name: <input id="name" placeholder="Player" required />
       </label>
+      <br />
+      <label>
+        Room Name: <input id="room" placeholder="default" value="default" required />
+      </label>
+      <br />
+      <label>
+        Players: <input id="numPlayers" type="number" value="2" min="2" max="8" required />
+      </label>
+      <br />
+      <label>
+        Tries: <input id="tries" type="number" value="5" min="1" max="20" required />
+      </label>
+      <br />
       <button id="joinBtn">Join Game</button>
     </form>
    </div>
