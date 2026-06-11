@@ -3,3 +3,4 @@ __pycache__
 README.md
 .claude
 .DS_Store
+.env
